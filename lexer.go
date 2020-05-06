@@ -10,8 +10,15 @@ import (
 )
 
 type Lexer struct {
-	Tokens      []string
-	RegexTokens []RegexToken
+	Tokens       []string
+	RegexTokens  []RegexToken
+	TokenTable   TokenList
+	CurrentToken int
+}
+
+type TokenState struct {
+	Tokens   TokenList
+	curToken int
 }
 
 type TokenList []Token
@@ -68,7 +75,31 @@ func (l *Lexer) testTokensOfFile(filePath string) (TokenList, error) {
 	for i, line := range fileTokens {
 		for _, token := range line {
 			var t Token
-			if regularToken := l.testRegularToken(token); regularToken != "" {
+			if token == "NEWLINE" {
+				t.Line = uint(i) + 1
+				t.Name = "NEWLINE"
+				t.Value = "\n"
+				tokenList = append(tokenList, t)
+				t = Token{}
+			} else if token == "INDENT" {
+				t.Line = uint(i) + 1
+				t.Name = "INDENT"
+				t.Value = "INDENT"
+				tokenList = append(tokenList, t)
+				t = Token{}
+			} else if token == "DEDENT" {
+				t.Line = uint(i) + 1
+				t.Name = "DEDENT"
+				t.Value = "DEDENT"
+				tokenList = append(tokenList, t)
+				t = Token{}
+			} else if token == "EOF" {
+				t.Line = uint(i) + 1
+				t.Name = "EOF"
+				t.Value = "EOF"
+				tokenList = append(tokenList, t)
+				t = Token{}
+			} else if regularToken := l.testRegularToken(token); regularToken != "" {
 				t.Line = uint(i) + 1
 				t.Name = regularToken
 				t.Value = regularToken
@@ -100,23 +131,35 @@ func (l *Lexer) tokensFromFile(filePath string) ([][]string, error) {
 	}
 	reader := bufio.NewReader(file)
 	regexString := l.fullRegex()
+	previousLineIdentLevel := 0
+	currentLineIdentLevel := 0
 	for {
+		var tokensOnLine []string
 		line, err := reader.ReadString('\n')
+		currentLineIdentLevel = defineLineIdentLevel(line)
+		if currentLineIdentLevel > previousLineIdentLevel {
+			tokensOnLine = append(tokensOnLine, "INDENT")
+		} else if currentLineIdentLevel < previousLineIdentLevel {
+			tokensOnLine = append(tokensOnLine, "DEDENT")
+		}
+		previousLineIdentLevel = currentLineIdentLevel
 		x := regexp.MustCompile(regexString)
 		array := x.FindAllStringSubmatch(line, -1)
-
-		var tokensOnLine []string
 		for _, i := range array {
 			for _, j := range i {
 				tokensOnLine = append(tokensOnLine, j)
 			}
 		}
-		tokens = append(tokens, tokensOnLine)
 		if err != nil {
 			if err == io.EOF {
+				tokensOnLine = append(tokensOnLine, "EOF")
+				tokens = append(tokens, tokensOnLine)
 				break
 			}
 			break
+		} else {
+			tokensOnLine = append(tokensOnLine, "NEWLINE")
+			tokens = append(tokens, tokensOnLine)
 		}
 	}
 	return tokens, nil
@@ -153,6 +196,11 @@ func (l *Lexer) testRegexToken(element string) string {
 	return ""
 }
 
+func (l *Lexer) next() Token {
+	l.CurrentToken++
+	return l.TokenTable[l.CurrentToken-1]
+}
+
 func (l *Lexer) fullRegex() string {
 	regexString := ""
 	for _, token := range l.Tokens {
@@ -171,4 +219,16 @@ func removeSpace(str string) string {
 		}
 		return r
 	}, str)
+}
+
+func defineLineIdentLevel(s string) int {
+	counter := 0
+	for counter < len(s)-1 {
+		if s[counter] == ' ' {
+			counter++
+		} else {
+			break
+		}
+	}
+	return counter
 }

@@ -2,19 +2,23 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 func main() {
 	lexer, err := newLexerFromFile("tokens.lex")
+	handleError(err)
+	tok, err := lexer.testTokensOfFile("ex.g")
+	handleError(err)
+	lexer.TokenTable = tok
+	program, err := Parse(lexer)
+	handleError(err)
+	fmt.Println(program)
+}
+
+func handleError(err error) {
 	if err != nil {
-		fmt.Println(err)
-	}
-	tok, err := lexer.testTokensOfFile("syntax.g")
-	for _, t := range tok {
-		fmt.Println(t)
-	}
-	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(-1)
 	}
 }

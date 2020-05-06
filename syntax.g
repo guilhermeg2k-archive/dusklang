@@ -3,6 +3,8 @@ package main
 import cos,sin from Math
 
 function main:
+    var int64 x,y,z
+    var int64 x = 0
     var x = 2
     if x > 1:
         println("x is greater than 1")
@@ -11,7 +13,8 @@ function main:
 
     for var y = 2; i < 3; i++:
         y++
-
+    for x in range(1,2):
+	println(x)
     switch x:
         case x > 2:
             println("i'm crazy")
