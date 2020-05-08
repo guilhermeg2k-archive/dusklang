@@ -75,13 +75,7 @@ func (l *Lexer) testTokensOfFile(filePath string) (TokenList, error) {
 	for i, line := range fileTokens {
 		for _, token := range line {
 			var t Token
-			if token == "NEWLINE" {
-				t.Line = uint(i) + 1
-				t.Name = "NEWLINE"
-				t.Value = "\n"
-				tokenList = append(tokenList, t)
-				t = Token{}
-			} else if token == "INDENT" {
+			if token == "INDENT" {
 				t.Line = uint(i) + 1
 				t.Name = "INDENT"
 				t.Value = "INDENT"
@@ -122,7 +116,19 @@ func (l *Lexer) testTokensOfFile(filePath string) (TokenList, error) {
 	}
 	return tokenList, nil
 }
+func AppendNewLineToFile(path string) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
+	_, err = f.WriteString("\n")
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (l *Lexer) tokensFromFile(filePath string) ([][]string, error) {
 	var tokens [][]string
 	file, err := os.Open(filePath)
@@ -131,18 +137,32 @@ func (l *Lexer) tokensFromFile(filePath string) ([][]string, error) {
 	}
 	reader := bufio.NewReader(file)
 	regexString := l.fullRegex()
+	identSpaces := 0
 	previousLineIdentLevel := 0
 	currentLineIdentLevel := 0
 	for {
 		var tokensOnLine []string
 		line, err := reader.ReadString('\n')
 		currentLineIdentLevel = defineLineIdentLevel(line)
-		if currentLineIdentLevel > previousLineIdentLevel {
+		if currentLineIdentLevel > previousLineIdentLevel && identSpaces == 0 {
 			tokensOnLine = append(tokensOnLine, "INDENT")
-		} else if currentLineIdentLevel < previousLineIdentLevel {
-			tokensOnLine = append(tokensOnLine, "DEDENT")
+			identSpaces = currentLineIdentLevel
+			previousLineIdentLevel = currentLineIdentLevel
+		} else {
+			if currentLineIdentLevel > previousLineIdentLevel {
+				indentCount := (currentLineIdentLevel - previousLineIdentLevel) / identSpaces
+				for i := 0; i < indentCount; i++ {
+					tokensOnLine = append(tokensOnLine, "INDENT")
+				}
+				previousLineIdentLevel = currentLineIdentLevel
+			} else if currentLineIdentLevel < previousLineIdentLevel {
+				dedentCount := (previousLineIdentLevel - currentLineIdentLevel) / identSpaces
+				for i := 0; i < dedentCount; i++ {
+					tokensOnLine = append(tokensOnLine, "DEDENT")
+				}
+				previousLineIdentLevel = currentLineIdentLevel
+			}
 		}
-		previousLineIdentLevel = currentLineIdentLevel
 		x := regexp.MustCompile(regexString)
 		array := x.FindAllStringSubmatch(line, -1)
 		for _, i := range array {
@@ -152,15 +172,20 @@ func (l *Lexer) tokensFromFile(filePath string) ([][]string, error) {
 		}
 		if err != nil {
 			if err == io.EOF {
+				lastElement := tokensOnLine[len(tokensOnLine)-1]
+				if lastElement != "DEDENT" && currentLineIdentLevel != 0 && identSpaces != 0 {
+					dedentCount := currentLineIdentLevel / identSpaces
+					for i := 0; i < dedentCount; i++ {
+						tokensOnLine = append(tokensOnLine, "DEDENT")
+					}
+				}
 				tokensOnLine = append(tokensOnLine, "EOF")
 				tokens = append(tokens, tokensOnLine)
 				break
 			}
 			break
-		} else {
-			tokensOnLine = append(tokensOnLine, "NEWLINE")
-			tokens = append(tokens, tokensOnLine)
 		}
+		tokens = append(tokens, tokensOnLine)
 	}
 	return tokens, nil
 }
@@ -201,6 +226,11 @@ func (l *Lexer) next() Token {
 	return l.TokenTable[l.CurrentToken-1]
 }
 
+func (l *Lexer) back() Token {
+	l.CurrentToken--
+	return l.TokenTable[l.CurrentToken-1]
+}
+
 func (l *Lexer) fullRegex() string {
 	regexString := ""
 	for _, token := range l.Tokens {
@@ -231,4 +261,8 @@ func defineLineIdentLevel(s string) int {
 		}
 	}
 	return counter
+}
+
+func (l *Lexer) isEOF() bool {
+	return l.TokenTable[l.CurrentToken].Name == "EOF"
 }

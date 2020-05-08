@@ -1,21 +1,12 @@
 package main
 
-const (
-	Byte   int = 1
-	Int16  int = 2
-	Int32  int = 3
-	Int64  int = 4
-	Uint16 int = 5
-	Uint32 int = 6
-	Uint64 int = 7
-	Float  int = 8
-	Double int = 9
-	String int = 10
-)
+type Statement struct {
+	Type      string
+	Statement interface{}
+}
 
-type Type int
-type Statement map[string]interface{}
-type Expression interface{}
+type Expression interface {
+}
 
 type Program struct {
 	Package   string
@@ -30,25 +21,24 @@ type Import struct {
 
 type Function struct {
 	Identifier string
-	ReturnType Type
+	ReturnType string
 	Args       []Arg
-	Statements Statement
+	Statements []Statement
 }
 
 type Arg struct {
-	Type       Type
+	Type       string
 	Identifier string
 }
 
 type AutoVarDeclaration struct {
 	Identifier string
-	Type       Type
+	Type       string
 	Expression Expression
 }
 
 type FullVarDeclaration struct {
-	Type        Type
-	Identifiers []string
+	Variables []AutoVarDeclaration
 }
 
 type Assign struct {
@@ -56,14 +46,10 @@ type Assign struct {
 	Expression Expression
 }
 
-type If struct {
+type IfBlock struct {
 	Condition  Expression
 	Statements []Statement
-	Else       Else
-}
-
-type Else struct {
-	Statements []Statement
+	Else       interface{}
 }
 
 type Case struct {
@@ -76,12 +62,13 @@ type Switch struct {
 	Default    Case
 }
 
-type For struct {
+type ForBlock struct {
 	Condition  Expression
 	Statements []Statement
 }
 
 type ForIn struct {
+	Inicialize interface{}
 	Identifier string
 	Range      Expression
 	Statement  []Statement
@@ -104,27 +91,25 @@ type Catch struct {
 }
 
 type Return struct {
-	Type Type
 	Expression
 }
 
-type BinaryExpression struct {
-	Operator   string
-	ReturnType Type
-	Left       Expression
-	Right      Expression
+type BinaryOperation struct {
+	Operator string
+	Left     Expression
+	Right    Expression
 }
 
-type UnaryExpression struct {
+type UnaryOperation struct {
 	Operator   string
 	Expression Expression
 }
 
-type ParenExpression struct {
-	BinaryExpression BinaryExpression
+type Literal struct {
+	Type  string
+	Value interface{}
 }
 
-type Literal struct {
-	Type  Type
-	Value interface{}
+type ParenExpression struct {
+	Expression Expression
 }
