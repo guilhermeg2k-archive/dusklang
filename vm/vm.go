@@ -1,8 +1,9 @@
 package vm
 
-type Frame map[uint64][]byte
+type Storage map[uint64][]byte
 type Consts map[uint64][]byte
 type Stack []byte
+
 type VirtualMachine struct {
 	Stack     *Stack
 	Functions *[]Function
@@ -10,7 +11,7 @@ type VirtualMachine struct {
 
 type Function struct {
 	Consts   Consts
-	Frame    *Frame
+	Storage  *Storage
 	Bytecode []byte
 }
 
@@ -24,13 +25,10 @@ func pop(stack *Stack, bytes int) []byte {
 	return poped
 }
 
-func store(frame *Frame, offset uint64, bytes []byte) {
-	_frame := *frame
-	_frame[offset] = bytes
-	frame = &_frame
+func store(storage *Storage, offset uint64, bytes []byte) {
+	(*storage)[offset] = bytes
 }
 
-func load(frame *Frame, offset uint64) []byte {
-	_frame := *frame
-	return _frame[offset]
+func load(storage *Storage, offset uint64) []byte {
+	return (*storage)[offset]
 }

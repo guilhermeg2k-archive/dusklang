@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/guilhermeg2k/glang/ast"
+	"github.com/guilhermeg2k/dusklang/ast"
 )
 
 func Analyze(p *ast.Program) error {

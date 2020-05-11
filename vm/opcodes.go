@@ -4,33 +4,36 @@ const (
 	ILOAD_CONST byte = 0
 	ILOAD       byte = 1
 	ISTORE      byte = 2
-	IPOP        byte = 3
-	IADD        byte = 4
-	ISUB        byte = 5
-	IMULT       byte = 6
-	IDIV        byte = 7
-	IMOD        byte = 8
+	IADD        byte = 3
+	ISUB        byte = 4
+	IMULT       byte = 5
+	IDIV        byte = 6
+	IMOD        byte = 7
 
-	FLOAD_CONST byte = 9
-	FLOAD       byte = 10
-	FSTORE      byte = 11
-	FPOP        byte = 12
-	FADD        byte = 13
-	FSUB        byte = 14
-	FMULT       byte = 15
-	FDIV        byte = 16
-	FMOD        byte = 17
+	FLOAD_CONST byte = 8
+	FLOAD       byte = 9
+	FSTORE      byte = 10
+	FADD        byte = 11
+	FSUB        byte = 12
+	FMULT       byte = 13
+	FDIV        byte = 14
 
-	BLOAD_CONST byte = 18
-	BLOAD       byte = 19
-	BSTORE      byte = 20
-	BPOP        byte = 21
-	BADD        byte = 22
-	BSUB        byte = 23
-	BMULT       byte = 24
-	BDIV        byte = 25
-	BMOD        byte = 26
+	BOLOAD_CONST byte = 15
+	BOLOAD       byte = 16
+	BOSTORE      byte = 18
 
-	FUNCCALL byte = 27
-	PRINT         = 28
+	ICMP_EQUALS         byte = 19
+	ICMP_LESS_EQUALS    byte = 20
+	ICMP_GREATER_EQUALS byte = 21
+	ICMP_LESS_THEN      byte = 22
+	ICMP_GREATER_THEN   byte = 23
+
+	FCMP_EQUALS         byte = 24
+	FCMP_LESS_EQUALS    byte = 25
+	FCMP_GREATER_EQUALS byte = 26
+	FCMP_LESS_THEN      byte = 27
+	FCMP_GREATER_THEN   byte = 28
+
+	FUNCCALL byte = 29
+	PRINT         = 99
 )

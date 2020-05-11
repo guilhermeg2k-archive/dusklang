@@ -1,2 +1,2 @@
-module github.com/guilhermeg2k/glang
+module github.com/guilhermeg2k/dusklang
 go 1.14

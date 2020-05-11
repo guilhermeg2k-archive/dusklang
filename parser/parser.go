@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/guilhermeg2k/glang/ast"
-	"github.com/guilhermeg2k/glang/lexer"
+	"github.com/guilhermeg2k/dusklang/ast"
+	"github.com/guilhermeg2k/dusklang/lexer"
 )
 
 var UNEXPECTED_ERROR error = errors.New("UNEXPECTED TOKEN")
