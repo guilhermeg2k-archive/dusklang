@@ -1,4 +1,4 @@
-# byte int16 int32 int64 uint16 uint32 uint64 float double bool
+# byte int float bool
 # package import from
 # function var return
 # if else

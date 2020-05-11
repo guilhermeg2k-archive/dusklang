@@ -1,4 +1,4 @@
-package main
+package lexer
 
 import (
 	"bufio"
@@ -33,7 +33,7 @@ type RegexToken struct {
 	Regex string
 }
 
-func newLexerFromFile(fileName string) (Lexer, error) {
+func NewLexerFromFile(fileName string) (Lexer, error) {
 	var lexer Lexer
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -66,7 +66,7 @@ func newLexerFromFile(fileName string) (Lexer, error) {
 	return lexer, nil
 }
 
-func (l *Lexer) testTokensOfFile(filePath string) (TokenList, error) {
+func (l *Lexer) TestTokens(filePath string) (TokenList, error) {
 	var tokenList TokenList
 	fileTokens, err := l.tokensFromFile(filePath)
 	if err != nil {
@@ -116,7 +116,7 @@ func (l *Lexer) testTokensOfFile(filePath string) (TokenList, error) {
 	}
 	return tokenList, nil
 }
-func AppendNewLineToFile(path string) error {
+func appendNewLineToFile(path string) error {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
 		return err
@@ -221,12 +221,12 @@ func (l *Lexer) testRegexToken(element string) string {
 	return ""
 }
 
-func (l *Lexer) next() Token {
+func (l *Lexer) Next() Token {
 	l.CurrentToken++
 	return l.TokenTable[l.CurrentToken-1]
 }
 
-func (l *Lexer) back() Token {
+func (l *Lexer) Back() Token {
 	l.CurrentToken--
 	return l.TokenTable[l.CurrentToken-1]
 }

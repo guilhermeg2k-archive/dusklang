@@ -1,11 +1,13 @@
-package main
+package ast
 
 type Statement struct {
 	Type      string
 	Statement interface{}
+	Line      uint
 }
 
 type Expression interface {
+	GetType() string
 }
 
 type Program struct {
@@ -16,17 +18,19 @@ type Program struct {
 
 type Import struct {
 	Identifiers []string
-	from        string
+	From        string
+	Line        uint
 }
 
 type Function struct {
 	Identifier string
 	ReturnType string
-	Args       []Arg
+	Args       []Variable
 	Statements []Statement
+	Line       uint
 }
 
-type Arg struct {
+type Variable struct {
 	Type       string
 	Identifier string
 }
@@ -50,6 +54,7 @@ type IfBlock struct {
 	Condition  Expression
 	Statements []Statement
 	Else       interface{}
+	Line       uint
 }
 
 type Case struct {
@@ -105,11 +110,34 @@ type UnaryOperation struct {
 	Expression Expression
 }
 
+type ParenExpression struct {
+	Expression Expression
+}
+
 type Literal struct {
 	Type  string
 	Value interface{}
 }
 
-type ParenExpression struct {
-	Expression Expression
+func (BinaryOperation) GetType() string {
+	return "BinaryOperation"
+}
+
+func (UnaryOperation) GetType() string {
+	return "UnaryOperation"
+}
+func (ParenExpression) GetType() string {
+	return "ParenExpression"
+}
+
+func (Literal) GetType() string {
+	return "Literal"
+}
+
+func (FuncCall) GetType() string {
+	return "FuncCall"
+}
+
+func (Variable) GetType() string {
+	return "variable"
 }

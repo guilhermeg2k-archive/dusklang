@@ -1,63 +1,68 @@
-package main
+package parser
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/guilhermeg2k/glang/ast"
+	"github.com/guilhermeg2k/glang/lexer"
 )
 
 var UNEXPECTED_ERROR error = errors.New("UNEXPECTED TOKEN")
 
-func Parse(lexer Lexer) (Program, error) {
-	var program Program
-	var nextToken Token
-	var imports []Import
-	//var functions []Function
-	_packageId, err := parsePackage(&lexer)
+//TODO: The functions on this file are a mess that's no pattern, fix it
+
+func Parse(l lexer.Lexer) (ast.Program, error) {
+	var program ast.Program
+	var nextToken lexer.Token
+	var imports []ast.Import
+	_packageId, err := parsePackage(&l)
 	if err != nil {
 		return program, errors.New(formatError(_packageId.Line, _packageId.Name))
 	}
 	program.Package = _packageId.Value
-	nextToken = lexer.next()
+	nextToken = l.Next()
 	if nextToken.Name == "import" {
-		imports, err = parseImports(&lexer, &nextToken)
+		imports, err = parseImports(&l, &nextToken)
 		program.Imports = imports
 		if err != nil {
+			//TODO: Better error msg pattern
 			return program, errors.New(formatError(nextToken.Line, nextToken.Value))
 		}
 	} else if err != nil {
 		return program, errors.New(formatError(nextToken.Line, nextToken.Value))
 	}
-	program.Functions, err = parseFunctions(&lexer, &nextToken)
+	program.Functions, err = parseFunctions(&l, &nextToken)
 	if err != nil {
 		return program, errors.New(formatError(nextToken.Line, nextToken.Value))
 	}
 	return program, nil
 }
 
-func parseFunctions(lexer *Lexer, nextToken *Token) ([]Function, error) {
-	var functions []Function
-	var function Function
+func parseFunctions(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Function, error) {
+	var functions []ast.Function
+	var function ast.Function
 	for {
-		*nextToken = lexer.next()
-		println(nextToken.Value)
+		*nextToken = l.Next()
 		if nextToken.Name == "EOF" {
 			return functions, nil
 		}
 		if nextToken.Name == "function" {
-			*nextToken = lexer.next()
+			function.Line = nextToken.Line
+			*nextToken = l.Next()
 			if isType(nextToken.Name) {
 				function.ReturnType = nextToken.Name
-				*nextToken = lexer.next()
+				*nextToken = l.Next()
 			}
 			if nextToken.Name == "identifier" {
 				function.Identifier = nextToken.Value
-				args, err := parseFunctionArgs(lexer, nextToken)
+				args, err := parseFunctionArgs(l, nextToken)
 				if err != nil {
 					return functions, err
 				}
 				function.Args = args
-				statements, err := parseStatements(lexer, nextToken)
+				statements, err := parseStatements(l, nextToken)
 				if err != nil {
 					return functions, UNEXPECTED_ERROR
 				}
@@ -72,27 +77,27 @@ func parseFunctions(lexer *Lexer, nextToken *Token) ([]Function, error) {
 	}
 }
 
-func parseFunctionArgs(lexer *Lexer, nextToken *Token) ([]Arg, error) {
-	var args []Arg
-	*nextToken = lexer.next()
+func parseFunctionArgs(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Variable, error) {
+	var args []ast.Variable
+	*nextToken = l.Next()
 	if nextToken.Name == "(" {
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		if nextToken.Name == ")" {
 			return args, nil
 		} else {
-			lexer.back()
+			l.Back()
 		}
 		for {
-			*nextToken = lexer.next()
+			*nextToken = l.Next()
 			if isType(nextToken.Name) {
 				_type := nextToken.Value
-				var arg Arg
+				var arg ast.Variable
 				arg.Type = _type
-				*nextToken = lexer.next()
+				*nextToken = l.Next()
 				if nextToken.Name == "identifier" {
 					arg.Identifier = nextToken.Value
 					args = append(args, arg)
-					*nextToken = lexer.next()
+					*nextToken = l.Next()
 					if nextToken.Name == "," {
 						continue
 					} else {
@@ -114,108 +119,115 @@ func parseFunctionArgs(lexer *Lexer, nextToken *Token) ([]Arg, error) {
 	}
 }
 
-func parseStatements(lexer *Lexer, nextToken *Token) ([]Statement, error) {
-	var statements []Statement
-	*nextToken = lexer.next()
+func parseStatements(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Statement, error) {
+	var statements []ast.Statement
+	*nextToken = l.Next()
 	if nextToken.Name == ":" {
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		if nextToken.Name == "INDENT" {
 			for {
-				*nextToken = lexer.next()
+				*nextToken = l.Next()
 				if nextToken.Name == "EOF" {
 					return statements, nil
 				}
 				switch nextToken.Name {
 				case "var":
-					statement, err := parseVarDeclaration(lexer, nextToken)
+					statement, err := parseVarDeclaration(l, nextToken)
 					if err != nil {
 						return statements, UNEXPECTED_ERROR
 					}
 					statements = append(statements, statement)
 				case "identifier":
 					identifier := nextToken.Value
-					*nextToken = lexer.next()
+					*nextToken = l.Next()
 					switch nextToken.Name {
 					//VAR ASSIGN:
 					case "=":
-						assign, err := parseAssign(lexer, nextToken, identifier)
+						assign, err := parseAssign(l, nextToken, identifier)
 						if err != nil {
 							return statements, err
 						}
-						statement := Statement{
+						statement := ast.Statement{
 							Statement: assign,
 							Type:      "assign",
 						}
+						statement.Line = nextToken.Line
 						statements = append(statements, statement)
 
 					//FUNCCALL
 					case "(":
-						funcCall, err := parseFuncCall(lexer, nextToken, identifier)
+						funcCall, err := parseFuncCall(l, nextToken, identifier)
 						if err != nil {
 							return statements, err
 						}
-						statement := Statement{
+						statement := ast.Statement{
 							Statement: funcCall,
 							Type:      "funcCall",
 						}
+						statement.Line = nextToken.Line
 						statements = append(statements, statement)
 					default:
 						return statements, UNEXPECTED_ERROR
 					}
 				case "if":
-					var ifBlock IfBlock
-					condition, err := parseExpression(lexer, nextToken)
+					var ifBlock ast.IfBlock
+					ifLine := nextToken.Line
+					ifBlock.Line = ifLine
+					condition, err := parseExpression(l, nextToken)
 					if err != nil {
 						return statements, err
 					}
 					ifBlock.Condition = condition
-					ifStatements, err := parseStatements(lexer, nextToken)
+					ifStatements, err := parseStatements(l, nextToken)
 					if err != nil {
 						return statements, err
 					}
 					ifBlock.Statements = ifStatements
-					*nextToken = lexer.next()
+					*nextToken = l.Next()
 					if nextToken.Name == "else" {
-						elseBlock, err := parseElse(lexer, nextToken)
+						elseBlock, err := parseElse(l, nextToken)
 						if err != nil {
 							return statements, err
 						}
 						ifBlock.Else = elseBlock
-						statements = append(statements, Statement{Type: "IFBLOCK", Statement: ifBlock})
+						statements = append(statements, ast.Statement{Type: "IFBLOCK", Statement: ifBlock, Line: ifLine})
 					} else {
-						statements = append(statements, Statement{Type: "IFBLOCK", Statement: ifBlock})
+						statements = append(statements, ast.Statement{Type: "IFBLOCK", Statement: ifBlock, Line: ifLine})
 					}
+
 				/*case "switch":
 				case "try":*/
 				case "for":
-					var forBlock ForBlock
-					condition, err := parseExpression(lexer, nextToken)
+					var forBlock ast.ForBlock
+					condition, err := parseExpression(l, nextToken)
 					if err != nil {
 						return statements, err
 					}
 					forBlock.Condition = condition
-
-					forStatements, err := parseStatements(lexer, nextToken)
+					forLine := nextToken.Line
+					forStatements, err := parseStatements(l, nextToken)
 					if err != nil {
 						return statements, err
 					}
 					forBlock.Statements = forStatements
-					statement := Statement{
+					statement := ast.Statement{
 						Type:      "For",
 						Statement: forBlock,
+						Line:      forLine,
 					}
 					statements = append(statements, statement)
 
 				case "return":
-					exp, err := parseExpression(lexer, nextToken)
+					exp, err := parseExpression(l, nextToken)
 					if err != nil {
 						return statements, UNEXPECTED_ERROR
 					}
-					var _return Return
+					var _return ast.Return
 					_return.Expression = exp
-					statement := Statement{
+					statement := ast.Statement{
 						Type:      "return",
 						Statement: _return,
+						Line:      nextToken.Line,
 					}
 					statements = append(statements, statement)
 				case "DEDENT":
@@ -233,16 +245,17 @@ func parseStatements(lexer *Lexer, nextToken *Token) ([]Statement, error) {
 		return statements, UNEXPECTED_ERROR
 	}
 }
-func parseElse(lexer *Lexer, nextToken *Token) (IfBlock, error) {
-	var elseBlock IfBlock
-	*nextToken = lexer.next()
+func parseElse(l *lexer.Lexer, nextToken *lexer.Token) (ast.IfBlock, error) {
+	var elseBlock ast.IfBlock
+	*nextToken = l.Next()
+	elseBlock.Line = nextToken.Line
 	if nextToken.Name == "if" {
-		condition, err := parseExpression(lexer, nextToken)
+		condition, err := parseExpression(l, nextToken)
 		if err != nil {
 			return elseBlock, err
 		}
 		elseBlock.Condition = condition
-		ifStatements, err := parseStatements(lexer, nextToken)
+		ifStatements, err := parseStatements(l, nextToken)
 		if err != nil {
 			return elseBlock, err
 		}
@@ -250,20 +263,20 @@ func parseElse(lexer *Lexer, nextToken *Token) (IfBlock, error) {
 		if nextToken.Name == "EOF" {
 			return elseBlock, nil
 		}
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		if nextToken.Name == "else" {
-			elseElseBlock, err := parseElse(lexer, nextToken)
+			elseElseBlock, err := parseElse(l, nextToken)
 			if err != nil {
 				return elseBlock, err
 			}
 			elseBlock.Else = elseElseBlock
 		} else {
-			*nextToken = lexer.back()
+			*nextToken = l.Back()
 		}
 		return elseBlock, nil
 	} else {
-		*nextToken = lexer.back()
-		ifStatements, err := parseStatements(lexer, nextToken)
+		*nextToken = l.Back()
+		ifStatements, err := parseStatements(l, nextToken)
 		if err != nil {
 			return elseBlock, err
 		}
@@ -271,43 +284,44 @@ func parseElse(lexer *Lexer, nextToken *Token) (IfBlock, error) {
 		return elseBlock, nil
 	}
 }
-func parseAssign(lexer *Lexer, nextToken *Token, identifier string) (Assign, error) {
-	var assign Assign
+func parseAssign(l *lexer.Lexer, nextToken *lexer.Token, identifier string) (ast.Assign, error) {
+	var assign ast.Assign
 	assign.Identifier = identifier
-	exp, err := parseExpression(lexer, nextToken)
+	exp, err := parseExpression(l, nextToken)
 	if err != nil {
 		return assign, err
 	}
 	assign.Expression = exp
 	return assign, nil
 }
-func parseVarDeclaration(lexer *Lexer, nextToken *Token) (Statement, error) {
-	*nextToken = lexer.next()
-	var statement Statement
+func parseVarDeclaration(l *lexer.Lexer, nextToken *lexer.Token) (ast.Statement, error) {
+	*nextToken = l.Next()
+	var statement ast.Statement
 	if isType(nextToken.Name) {
 		statement.Type = "FullVarDeclaration"
+		statement.Line = nextToken.Line
 		_type := nextToken.Name
-		var vars FullVarDeclaration
+		var vars ast.FullVarDeclaration
 		for {
-			*nextToken = lexer.next()
+			*nextToken = l.Next()
 			if nextToken.Name == "identifier" {
-				var variable AutoVarDeclaration
+				var variable ast.AutoVarDeclaration
 				variable.Type = _type
 				variable.Identifier = nextToken.Value
-				*nextToken = lexer.next()
+				*nextToken = l.Next()
 				if nextToken.Name == "=" {
-					expression, err := parseExpression(lexer, nextToken)
+					expression, err := parseExpression(l, nextToken)
 					if err != nil {
 						return statement, UNEXPECTED_ERROR
 					}
 					variable.Expression = expression
-					*nextToken = lexer.next()
+					*nextToken = l.Next()
 				}
 				vars.Variables = append(vars.Variables, variable)
 				if nextToken.Name == "," {
 					continue
 				} else {
-					*nextToken = lexer.back()
+					*nextToken = l.Back()
 					break
 				}
 			} else {
@@ -317,13 +331,13 @@ func parseVarDeclaration(lexer *Lexer, nextToken *Token) (Statement, error) {
 		statement.Statement = vars
 		return statement, nil
 	} else if nextToken.Name == "identifier" {
-		var variable AutoVarDeclaration
+		var variable ast.AutoVarDeclaration
 		variable.Identifier = nextToken.Value
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		if nextToken.Name == "=" {
-			//*nextToken = lexer.next()
+			//*nextToken = l.Next()
 			//TODO: DECIDE TYPE OF VAR
-			exp, err := parseExpression(lexer, nextToken)
+			exp, err := parseExpression(l, nextToken)
 			if err != nil {
 				return statement, UNEXPECTED_ERROR
 			}
@@ -337,41 +351,41 @@ func parseVarDeclaration(lexer *Lexer, nextToken *Token) (Statement, error) {
 	}
 	return statement, UNEXPECTED_ERROR
 }
-func parseArgs(lexer *Lexer, nextToken *Token) ([]Expression, error) {
-	var expressions []Expression
+func parseArgs(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Expression, error) {
+	var expressions []ast.Expression
 	for {
-		exp, err := parseExpression(lexer, nextToken)
+		exp, err := parseExpression(l, nextToken)
 		if err != nil {
 			return expressions, err
 		}
 		expressions = append(expressions, exp)
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		if nextToken.Name == "," {
-			*nextToken = lexer.next()
+			*nextToken = l.Next()
 			continue
 		} else {
-			*nextToken = lexer.back()
+			*nextToken = l.Back()
 			break
 		}
 	}
 	return expressions, nil
 }
-func parseFuncCall(lexer *Lexer, nextToken *Token, identifier string) (FuncCall, error) {
-	var funcCall FuncCall
-	*nextToken = lexer.next()
+func parseFuncCall(l *lexer.Lexer, nextToken *lexer.Token, identifier string) (ast.FuncCall, error) {
+	var funcCall ast.FuncCall
+	*nextToken = l.Next()
 	if nextToken.Name == ")" {
-		var funcCall FuncCall
+		var funcCall ast.FuncCall
 		funcCall.Identifier = identifier
 		return funcCall, nil
 	}
-	*nextToken = lexer.back()
+	*nextToken = l.Back()
 	funcCall.Identifier = identifier
-	expressions, err := parseArgs(lexer, nextToken)
+	expressions, err := parseArgs(l, nextToken)
 	if err != nil {
 		return funcCall, err
 	}
 	funcCall.Expressions = expressions
-	*nextToken = lexer.next()
+	*nextToken = l.Next()
 	if nextToken.Name != ")" {
 		return funcCall, UNEXPECTED_ERROR
 	}
@@ -379,19 +393,23 @@ func parseFuncCall(lexer *Lexer, nextToken *Token, identifier string) (FuncCall,
 }
 
 //TODO: Function to big, modularize it
-func parseExpression(lexer *Lexer, nextToken *Token) (interface{}, error) {
-	*nextToken = lexer.next()
+func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, error) {
+	*nextToken = l.Next()
 	if nextToken.Name == "number" ||
 		nextToken.Name == "string" ||
 		nextToken.Name == "decimalNumber" ||
 		nextToken.Name == "true" ||
 		nextToken.Name == "false" {
 		//BINARY OPERATION
-		var literal Literal
+		var literal ast.Literal
+		if nextToken.Name == "true" || nextToken.Name == "false" {
+			literal.Type = "boolean"
+		} else {
+			literal.Type = nextToken.Name
+		}
 		literal.Value = nextToken.Value
-		literal.Type = nextToken.Name
 		left := literal
-		binaryOp, err := parseBinaryOperation(left, lexer, nextToken)
+		binaryOp, err := parseBinaryOperation(left, l, nextToken)
 		if err != nil {
 			if err.Error() == "NOT_BINARY_OPERATION" {
 				//LITERAL
@@ -404,15 +422,15 @@ func parseExpression(lexer *Lexer, nextToken *Token) (interface{}, error) {
 	}
 	if nextToken.Name == "identifier" {
 		identifier := nextToken.Value
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		//FUNC CALL
 		if nextToken.Name == "(" {
-			funcCall, err := parseFuncCall(lexer, nextToken, identifier)
+			funcCall, err := parseFuncCall(l, nextToken, identifier)
 			if err != nil {
 				return funcCall, err
 			}
 			left := funcCall
-			binaryOp, err := parseBinaryOperation(left, lexer, nextToken)
+			binaryOp, err := parseBinaryOperation(left, l, nextToken)
 			if err != nil {
 				if err.Error() == "NOT_BINARY_OPERATION" {
 					return funcCall, nil
@@ -422,15 +440,15 @@ func parseExpression(lexer *Lexer, nextToken *Token) (interface{}, error) {
 				return binaryOp, nil
 			}
 		} else { //VAR
-			*nextToken = lexer.back()
-			var literal Literal
-			literal.Value = nextToken.Value
-			literal.Type = nextToken.Name
-			left := literal
-			binaryOp, err := parseBinaryOperation(left, lexer, nextToken)
+			*nextToken = l.Back()
+			var variable ast.Variable
+			variable.Identifier = nextToken.Value
+			fmt.Println(variable.Type)
+			left := variable
+			binaryOp, err := parseBinaryOperation(left, l, nextToken)
 			if err != nil {
 				if err.Error() == "NOT_BINARY_OPERATION" {
-					return literal, nil
+					return variable, nil
 				}
 				return nil, err
 			} else {
@@ -439,8 +457,8 @@ func parseExpression(lexer *Lexer, nextToken *Token) (interface{}, error) {
 		}
 	}
 	if nextToken.Name == "!" {
-		var unaryOperation UnaryOperation
-		exp, err := parseExpression(lexer, nextToken)
+		var unaryOperation ast.UnaryOperation
+		exp, err := parseExpression(l, nextToken)
 		if err != nil {
 			return nil, UNEXPECTED_ERROR
 		}
@@ -449,18 +467,18 @@ func parseExpression(lexer *Lexer, nextToken *Token) (interface{}, error) {
 		return unaryOperation, nil
 	}
 	if nextToken.Name == "(" {
-		var parenExpression ParenExpression
-		exp, err := parseExpression(lexer, nextToken)
+		var parenExpression ast.ParenExpression
+		exp, err := parseExpression(l, nextToken)
 		if err != nil {
 			return nil, UNEXPECTED_ERROR
 		}
 		parenExpression.Expression = exp
-		*nextToken = lexer.next()
+		*nextToken = l.Next()
 		if nextToken.Name != ")" {
 			return nil, UNEXPECTED_ERROR
 		}
 		left := parenExpression
-		binaryOp, err := parseBinaryOperation(left, lexer, nextToken)
+		binaryOp, err := parseBinaryOperation(left, l, nextToken)
 		if err != nil {
 			if err.Error() == "NOT_BINARY_OPERATION" {
 				return parenExpression, nil
@@ -473,10 +491,11 @@ func parseExpression(lexer *Lexer, nextToken *Token) (interface{}, error) {
 	return nil, UNEXPECTED_ERROR
 }
 
-func parseBinaryOperation(left Expression, lexer *Lexer, nextToken *Token) (BinaryOperation, error) {
-	*nextToken = lexer.next()
+//TODO: Lexer as first parameter
+func parseBinaryOperation(left ast.Expression, l *lexer.Lexer, nextToken *lexer.Token) (ast.BinaryOperation, error) {
+	*nextToken = l.Next()
 
-	var binaryOperation BinaryOperation
+	var binaryOperation ast.BinaryOperation
 	if nextToken.Name == "+" ||
 		nextToken.Name == "-" ||
 		nextToken.Name == "*" ||
@@ -492,33 +511,35 @@ func parseBinaryOperation(left Expression, lexer *Lexer, nextToken *Token) (Bina
 		nextToken.Name == "or" {
 		binaryOperation.Left = left
 		binaryOperation.Operator = nextToken.Name
-		exp, err := parseExpression(lexer, nextToken)
+		exp, err := parseExpression(l, nextToken)
 		if err != nil {
 			return binaryOperation, UNEXPECTED_ERROR
 		}
 		binaryOperation.Right = exp
 		return binaryOperation, nil
 	} else {
-		*nextToken = lexer.back()
+		*nextToken = l.Back()
 		return binaryOperation, errors.New("NOT_BINARY_OPERATION")
 	}
 }
-func parseImports(lexer *Lexer, nextToken *Token) ([]Import, error) {
-	var imports []Import
-	*nextToken = lexer.next()
+
+func parseImports(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Import, error) {
+	//TODO: Get rid of the beggining of the function and put everything inside of the forloop
+	var imports []ast.Import
+	*nextToken = l.Next()
 	if nextToken.Name == "identifier" {
-		var _import Import
-		_import, err := parseImport(lexer, nextToken)
+		var _import ast.Import
+		_import, err := parseImport(l, nextToken)
 		if err != nil {
 			return imports, err
 		}
 		imports = append(imports, _import)
 		//Parse multiple imports
 		for nextToken.Name == "import" {
-			*nextToken = lexer.next()
+			*nextToken = l.Next()
 			if nextToken.Name == "identifier" {
-				var _import Import
-				_import, err := parseImport(lexer, nextToken)
+				var _import ast.Import
+				_import, err := parseImport(l, nextToken)
 				if err != nil {
 					return imports, err
 				}
@@ -533,14 +554,14 @@ func parseImports(lexer *Lexer, nextToken *Token) ([]Import, error) {
 	return imports, nil
 }
 
-func parseImport(lexer *Lexer, nextToken *Token) (Import, error) {
-	var _import Import
+func parseImport(l *lexer.Lexer, nextToken *lexer.Token) (ast.Import, error) {
+	var _import ast.Import
 	var identifiers []string
 	identifiers = append(identifiers, nextToken.Value)
-	*nextToken = lexer.next()
+	*nextToken = l.Next()
 	//More than one import from the same source
-	for ; nextToken.Name == ","; *nextToken = lexer.next() {
-		if *nextToken = lexer.next(); nextToken.Name == "identifier" {
+	for ; nextToken.Name == ","; *nextToken = l.Next() {
+		if *nextToken = l.Next(); nextToken.Name == "identifier" {
 			identifiers = append(identifiers, nextToken.Value)
 		} else {
 			return _import, UNEXPECTED_ERROR
@@ -548,8 +569,9 @@ func parseImport(lexer *Lexer, nextToken *Token) (Import, error) {
 	}
 	if nextToken.Name == "from" {
 		_import.Identifiers = identifiers
-		if *nextToken = lexer.next(); nextToken.Name == "identifier" {
-			_import.from = nextToken.Value
+		if *nextToken = l.Next(); nextToken.Name == "identifier" {
+			_import.From = nextToken.Value
+			_import.Line = nextToken.Line
 			return _import, nil
 		} else {
 			return _import, UNEXPECTED_ERROR
@@ -559,20 +581,21 @@ func parseImport(lexer *Lexer, nextToken *Token) (Import, error) {
 	}
 }
 
-func parsePackage(lexer *Lexer) (Token, error) {
-	_package := lexer.next()
-	value := lexer.next()
+func parsePackage(l *lexer.Lexer) (lexer.Token, error) {
+	_package := l.Next()
+	value := l.Next()
 	if _package.Name == "package" {
 		if value.Name != "identifier" {
 			return value, UNEXPECTED_ERROR
 		}
+		_package.Line = value.Line
 		return value, nil
 	}
 	return value, UNEXPECTED_ERROR
 }
 
 func isType(s string) bool {
-	var types string = "byte int16 int32 int64 uint16 uint32 uint64 float double string"
+	var types string = "byte int float string bool"
 	return strings.Contains(types, s)
 }
 
