@@ -1,35 +1,32 @@
 package vm
 
 import (
-	"bytes"
-	"encoding/binary"
+	"fmt"
 	"io"
 	"os"
-
-	"github.com/guilhermeg2k/dusklang/dusk"
 )
 
 func exit() {
 	os.Exit(1)
 }
 
-func Evaluate(vm *VirtualMachine) {
-	functions := *vm.Functions
-	main := functions[0]
-	reader := bytes.NewReader(main.Bytecode)
+func Evaluate(vm *VirtualMachine, function *Function) []byte {
+	function.CurrentOffset = 0
 	for {
-		opCode, err := reader.ReadByte()
+		opCode, err := function.readByte()
+		fmt.Println(opCode)
 		if err == io.EOF {
-			exit()
+			return nil
 		}
 		switch opCode {
-		//INT ARITHIMETICS OPERATIONS
+
+		//Int arithmetics
 		case ILOAD_CONST:
-			iLoadConst(reader, vm.Stack, main.Consts)
+			iLoadConst(vm.Stack, function)
 		case ISTORE:
-			iStore(reader, vm.Stack, main.Storage)
+			iStore(vm.Stack, function)
 		case ILOAD:
-			iLoad(reader, vm.Stack, main.Storage)
+			iLoad(vm.Stack, function)
 		case IADD:
 			iAdd(vm.Stack)
 		case ISUB:
@@ -40,13 +37,13 @@ func Evaluate(vm *VirtualMachine) {
 			iDiv(vm.Stack)
 		case IMOD:
 			iMod(vm.Stack)
-		//FLOAT ARITHIMETICS OPERATIONS
+		//Float arithmetics
 		case FLOAD_CONST:
-			fLoadConst(reader, vm.Stack, main.Consts)
+			fLoadConst(vm.Stack, function)
 		case FSTORE:
-			fStore(reader, vm.Stack, main.Storage)
+			fStore(vm.Stack, function)
 		case FLOAD:
-			fLoad(reader, vm.Stack, main.Storage)
+			fLoad(vm.Stack, function)
 		case FADD:
 			fAdd(vm.Stack)
 		case FSUB:
@@ -55,7 +52,13 @@ func Evaluate(vm *VirtualMachine) {
 			fMult(vm.Stack)
 		case FDIV:
 			fDiv(vm.Stack)
-		//INT COMPARISONS
+		case BOLOAD_CONST:
+			bLoadConst(vm.Stack, function)
+		case BOSTORE:
+			bStore(vm.Stack, function)
+		case BOLOAD:
+			bLoad(vm.Stack, function)
+		//Int comparisons
 		case ICMP_EQUALS:
 			iCmpEquals(vm.Stack)
 		case ICMP_LESS_EQUALS:
@@ -66,7 +69,7 @@ func Evaluate(vm *VirtualMachine) {
 			iCmpLessThen(vm.Stack)
 		case ICMP_GREATER_THEN:
 			iCmpLessThen(vm.Stack)
-		//FLOAT COMPARISONS
+		//Float comparisons
 		case FCMP_EQUALS:
 			fCmpEquals(vm.Stack)
 		case FCMP_LESS_EQUALS:
@@ -77,197 +80,22 @@ func Evaluate(vm *VirtualMachine) {
 			fCmpLessThen(vm.Stack)
 		case FCMP_GREATER_THEN:
 			fCmpGreaterThen(vm.Stack)
+		//Jumps
+		case JUMP_IF_ELSE:
+			jumpIfElse(vm.Stack, function)
+		case JUMP_IF_TRUE:
+			jumpIfTrue(vm.Stack, function)
 		case PRINT:
 			Print(vm.Stack)
+		case 255:
+			return *vm.Stack
 		}
 	}
 }
 
-func iLoadConst(reader *bytes.Reader, stack *Stack, consts Consts) {
-	var offset []byte
-	offset = make([]byte, 8)
-	reader.Read(offset)
-	offsetValue, _ := binary.Uvarint(offset)
-	push(stack, consts[offsetValue])
-}
+//TODO: HANDLE ERRORS
 
-func iStore(reader *bytes.Reader, stack *Stack, frame *Storage) {
-	var offset []byte
-	offset = make([]byte, 8)
-	reader.Read(offset)
-	offsetValue, _ := binary.Uvarint(offset)
-	bytes := pop(stack, 8)
-	store(frame, offsetValue, bytes)
-}
-
-func iLoad(reader *bytes.Reader, stack *Stack, frame *Storage) {
-	var offset []byte
-	offset = make([]byte, 8)
-	reader.Read(offset)
-	offsetValue, _ := binary.Uvarint(offset)
-	bytes := load(frame, offsetValue)
-	push(stack, bytes)
-}
-
-func iAdd(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.IAdd(left, right)
-	push(stack, res)
-}
-
-func iSub(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.ISub(left, right)
-	push(stack, res)
-}
-
-func iMult(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.IMult(left, right)
-	push(stack, res)
-}
-
-func iDiv(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.IDiv(left, right)
-	push(stack, res)
-}
-
-func iMod(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.IMod(left, right)
-	push(stack, res)
-}
-
-func fLoadConst(reader *bytes.Reader, stack *Stack, consts Consts) {
-	var offset []byte
-	offset = make([]byte, 8)
-	reader.Read(offset)
-	offsetValue, _ := binary.Uvarint(offset)
-	push(stack, consts[offsetValue])
-}
-
-func fStore(reader *bytes.Reader, stack *Stack, frame *Storage) {
-	var offset []byte
-	offset = make([]byte, 8)
-	reader.Read(offset)
-	offsetValue, _ := binary.Uvarint(offset)
-	bytes := pop(stack, 8)
-	store(frame, offsetValue, bytes)
-}
-
-func fLoad(reader *bytes.Reader, stack *Stack, frame *Storage) {
-	var offset []byte
-	offset = make([]byte, 8)
-	reader.Read(offset)
-	offsetValue, _ := binary.Uvarint(offset)
-	bytes := load(frame, offsetValue)
-	push(stack, bytes)
-}
-
-func fAdd(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FAdd(left, right)
-	push(stack, res)
-}
-
-func fSub(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FSub(left, right)
-	push(stack, res)
-}
-
-func fMult(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FMult(left, right)
-	push(stack, res)
-}
-
-func fDiv(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FDiv(left, right)
-	push(stack, res)
-}
-
-func iCmpEquals(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.ICmpEquals(left, right)
-	push(stack, res)
-}
-
-func iCmpLessEquals(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.ICmpLessEquals(left, right)
-	push(stack, res)
-}
-
-func iCmpGreaterEquals(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.ICmpGreaterEquals(left, right)
-	push(stack, res)
-}
-
-func iCmpLessThen(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.ICmpLessThen(left, right)
-	push(stack, res)
-}
-func iCmpGreaterThen(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.ICmpGreaterThen(left, right)
-	push(stack, res)
-}
-
-func fCmpEquals(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FCmpEquals(left, right)
-	push(stack, res)
-}
-
-func fCmpLessEquals(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FCmpLessEquals(left, right)
-	push(stack, res)
-}
-
-func fCmpGreaterEquals(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FCmpGreaterEquals(left, right)
-	push(stack, res)
-}
-
-func fCmpLessThen(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FCmpLessThen(left, right)
-	push(stack, res)
-}
-func fCmpGreaterThen(stack *Stack) {
-	right := pop(stack, 8)
-	left := pop(stack, 8)
-	res := dusk.FCmpGreaterThen(left, right)
-	push(stack, res)
-}
-
-//Temporary
-func Print(stack *Stack) {
-	value := pop(stack, 1)
-	dusk.Print(value)
+func handleError(err error) {
+	fmt.Println("PANIC: ", err.Error())
+	os.Exit(0)
 }

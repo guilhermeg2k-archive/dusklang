@@ -34,6 +34,7 @@ const (
 	FCMP_LESS_THEN      byte = 27
 	FCMP_GREATER_THEN   byte = 28
 
-	FUNCCALL byte = 29
-	PRINT         = 99
+	JUMP_IF_ELSE byte = 29
+	JUMP_IF_TRUE byte = 30
+	PRINT             = 99
 )

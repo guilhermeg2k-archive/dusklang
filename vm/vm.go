@@ -1,7 +1,10 @@
 package vm
 
+import "io"
+
 type Storage map[uint64][]byte
 type Consts map[uint64][]byte
+type Labels map[uint64]int
 type Stack []byte
 
 type VirtualMachine struct {
@@ -10,9 +13,29 @@ type VirtualMachine struct {
 }
 
 type Function struct {
-	Consts   Consts
-	Storage  *Storage
-	Bytecode []byte
+	Labels        Labels
+	Consts        Consts
+	Storage       *Storage
+	Bytecode      []byte
+	CurrentOffset int
+}
+
+func (f *Function) readByte() (byte, error) {
+	bytes, err := f.readBytes(1)
+	if err != nil {
+		return 0, err
+	}
+	return bytes[0], nil
+}
+
+func (f *Function) readBytes(n int) ([]byte, error) {
+	if f.CurrentOffset == len(f.Bytecode) {
+		return []byte{}, io.EOF
+	}
+	defer func() {
+		f.CurrentOffset += n
+	}()
+	return f.Bytecode[f.CurrentOffset : f.CurrentOffset+n], nil
 }
 
 func push(stack *Stack, bytes []byte) {
