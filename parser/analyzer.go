@@ -118,7 +118,7 @@ func analyzeIfBlock(functions []ast.Function, ifBlock ast.IfBlock, functionVars 
 func getExpressionType(functions []ast.Function, expression ast.Expression, functionVars []ast.Variable) (string, error) {
 	switch expression.GetType() {
 	case "Literal":
-		switch expression.(ast.Literal).Type {
+		switch expression.(*ast.Literal).Type {
 		case "number":
 			return "int", nil
 		case "decimalNumber":
@@ -132,11 +132,11 @@ func getExpressionType(functions []ast.Function, expression ast.Expression, func
 		//TODO: It's just working for "!" operator, make it work for all unary operators
 		return "bool", nil
 	case "BinaryOperation":
-		typeOfLeft, err := getExpressionType(functions, expression.(ast.BinaryOperation).Left, functionVars)
+		typeOfLeft, err := getExpressionType(functions, expression.(*ast.BinaryOperation).Left, functionVars)
 		if err != nil {
 			return "", err
 		}
-		typeOfRight, err := getExpressionType(functions, expression.(ast.BinaryOperation).Right, functionVars)
+		typeOfRight, err := getExpressionType(functions, expression.(*ast.BinaryOperation).Right, functionVars)
 		if err != nil {
 			return "", err
 		}
@@ -145,19 +145,19 @@ func getExpressionType(functions []ast.Function, expression ast.Expression, func
 		}
 		return "", errors.New("Invalid type operation")
 	case "ParenExpression":
-		parenType, err := getExpressionType(functions, expression.(ast.ParenExpression).Expression, functionVars)
+		parenType, err := getExpressionType(functions, expression.(*ast.ParenExpression).Expression, functionVars)
 		if err != nil {
 			return "", err
 		}
 		return parenType, nil
 	case "FuncCall":
-		funcReturnType, err := getFuncReturnType(functions, expression.(ast.FuncCall).Identifier)
+		funcReturnType, err := getFuncReturnType(functions, expression.(*ast.FuncCall).Identifier)
 		if err != nil {
 			return "", err
 		}
 		return funcReturnType, nil
 	case "variable":
-		varType, err := getVariableType(functionVars, expression.(ast.Variable).Identifier)
+		varType, err := getVariableType(functionVars, expression.(*ast.Variable).Identifier)
 		if err != nil {
 			return "", err
 		}

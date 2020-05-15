@@ -10,51 +10,66 @@ import (
 func IAdd(a, b []byte) []byte {
 	var left int64
 	var right int64
-	res := make([]byte, 8)
-	left, _ = binary.Varint(a)
-	right, _ = binary.Varint(b)
-	binary.PutVarint(res, left+right)
-	return res
+	buf := bytes.NewReader(a)
+	binary.Read(buf, binary.LittleEndian, &left)
+	buf = bytes.NewReader(b)
+	binary.Read(buf, binary.LittleEndian, &right)
+
+	var res bytes.Buffer
+	binary.Write(&res, binary.LittleEndian, left+right)
+	return res.Bytes()
 }
 
 func ISub(a, b []byte) []byte {
 	var left int64
 	var right int64
-	res := make([]byte, 8)
-	left, _ = binary.Varint(a)
-	right, _ = binary.Varint(b)
-	binary.PutVarint(res, left-right)
-	return res
+	buf := bytes.NewReader(a)
+	binary.Read(buf, binary.LittleEndian, &left)
+	buf = bytes.NewReader(b)
+	binary.Read(buf, binary.LittleEndian, &right)
+
+	var res bytes.Buffer
+	binary.Write(&res, binary.LittleEndian, left-right)
+	return res.Bytes()
 }
 
 func IMult(a, b []byte) []byte {
 	var left int64
 	var right int64
-	res := make([]byte, 8)
-	left, _ = binary.Varint(a)
-	right, _ = binary.Varint(b)
-	binary.PutVarint(res, left*right)
-	return res
+	buf := bytes.NewReader(a)
+	binary.Read(buf, binary.LittleEndian, &left)
+	buf = bytes.NewReader(b)
+	binary.Read(buf, binary.LittleEndian, &right)
+
+	var res bytes.Buffer
+	binary.Write(&res, binary.LittleEndian, left*right)
+	return res.Bytes()
 }
 
 func IDiv(a, b []byte) []byte {
 	var left int64
 	var right int64
-	res := make([]byte, 8)
-	left, _ = binary.Varint(a)
-	right, _ = binary.Varint(b)
-	binary.PutVarint(res, left/right)
-	return res
+	buf := bytes.NewReader(a)
+	binary.Read(buf, binary.LittleEndian, &left)
+	buf = bytes.NewReader(b)
+	binary.Read(buf, binary.LittleEndian, &right)
+
+	var res bytes.Buffer
+	binary.Write(&res, binary.LittleEndian, left/right)
+	return res.Bytes()
 }
 
 func IMod(a, b []byte) []byte {
 	var left int64
 	var right int64
-	res := make([]byte, 8)
-	left, _ = binary.Varint(a)
-	right, _ = binary.Varint(b)
-	binary.PutVarint(res, left%right)
-	return res
+	buf := bytes.NewReader(a)
+	binary.Read(buf, binary.LittleEndian, &left)
+	buf = bytes.NewReader(b)
+	binary.Read(buf, binary.LittleEndian, &right)
+
+	var res bytes.Buffer
+	binary.Write(&res, binary.LittleEndian, left%right)
+	return res.Bytes()
 }
 
 func FAdd(a, b []byte) []byte {

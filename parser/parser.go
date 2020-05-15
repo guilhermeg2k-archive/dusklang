@@ -409,15 +409,15 @@ func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, er
 		}
 		literal.Value = nextToken.Value
 		left := literal
-		binaryOp, err := parseBinaryOperation(left, l, nextToken)
+		binaryOp, err := parseBinaryOperation(&left, l, nextToken)
 		if err != nil {
 			if err.Error() == "NOT_BINARY_OPERATION" {
 				//LITERAL
-				return literal, nil
+				return &literal, nil
 			}
 			return nil, err
 		} else {
-			return binaryOp, nil
+			return &binaryOp, nil
 		}
 	}
 	if nextToken.Name == "identifier" {
@@ -427,17 +427,17 @@ func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, er
 		if nextToken.Name == "(" {
 			funcCall, err := parseFuncCall(l, nextToken, identifier)
 			if err != nil {
-				return funcCall, err
+				return &funcCall, err
 			}
 			left := funcCall
-			binaryOp, err := parseBinaryOperation(left, l, nextToken)
+			binaryOp, err := parseBinaryOperation(&left, l, nextToken)
 			if err != nil {
 				if err.Error() == "NOT_BINARY_OPERATION" {
-					return funcCall, nil
+					return &funcCall, nil
 				}
 				return nil, err
 			} else {
-				return binaryOp, nil
+				return &binaryOp, nil
 			}
 		} else { //VAR
 			*nextToken = l.Back()
@@ -445,14 +445,14 @@ func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, er
 			variable.Identifier = nextToken.Value
 			fmt.Println(variable.Type)
 			left := variable
-			binaryOp, err := parseBinaryOperation(left, l, nextToken)
+			binaryOp, err := parseBinaryOperation(&left, l, nextToken)
 			if err != nil {
 				if err.Error() == "NOT_BINARY_OPERATION" {
-					return variable, nil
+					return &variable, nil
 				}
 				return nil, err
 			} else {
-				return binaryOp, nil
+				return &binaryOp, nil
 			}
 		}
 	}
@@ -464,7 +464,7 @@ func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, er
 		}
 		unaryOperation.Expression = exp
 		unaryOperation.Operator = nextToken.Name
-		return unaryOperation, nil
+		return &unaryOperation, nil
 	}
 	if nextToken.Name == "(" {
 		var parenExpression ast.ParenExpression
@@ -478,14 +478,14 @@ func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, er
 			return nil, UNEXPECTED_ERROR
 		}
 		left := parenExpression
-		binaryOp, err := parseBinaryOperation(left, l, nextToken)
+		binaryOp, err := parseBinaryOperation(&left, l, nextToken)
 		if err != nil {
 			if err.Error() == "NOT_BINARY_OPERATION" {
-				return parenExpression, nil
+				return &parenExpression, nil
 			}
 			return nil, err
 		} else {
-			return binaryOp, nil
+			return &binaryOp, nil
 		}
 	}
 	return nil, UNEXPECTED_ERROR

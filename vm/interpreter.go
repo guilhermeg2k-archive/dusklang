@@ -14,7 +14,6 @@ func Evaluate(vm *VirtualMachine, function *Function) []byte {
 	function.CurrentOffset = 0
 	for {
 		opCode, err := function.readByte()
-		fmt.Println(opCode)
 		if err == io.EOF {
 			return nil
 		}
@@ -87,7 +86,7 @@ func Evaluate(vm *VirtualMachine, function *Function) []byte {
 			jumpIfTrue(vm.Stack, function)
 		case PRINT:
 			Print(vm.Stack)
-		case 255:
+		case EXIT:
 			return *vm.Stack
 		}
 	}

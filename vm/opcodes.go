@@ -36,5 +36,6 @@ const (
 
 	JUMP_IF_ELSE byte = 29
 	JUMP_IF_TRUE byte = 30
-	PRINT             = 99
+	PRINT        byte = 99
+	EXIT         byte = 255
 )

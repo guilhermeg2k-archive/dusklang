@@ -115,29 +115,30 @@ type ParenExpression struct {
 }
 
 type Literal struct {
-	Type  string
-	Value interface{}
+	Type    string
+	Value   string
+	Visited bool
 }
 
-func (BinaryOperation) GetType() string {
+func (*BinaryOperation) GetType() string {
 	return "BinaryOperation"
 }
 
-func (UnaryOperation) GetType() string {
+func (*UnaryOperation) GetType() string {
 	return "UnaryOperation"
 }
-func (ParenExpression) GetType() string {
+func (*ParenExpression) GetType() string {
 	return "ParenExpression"
 }
 
-func (Literal) GetType() string {
+func (*Literal) GetType() string {
 	return "Literal"
 }
 
-func (FuncCall) GetType() string {
+func (*FuncCall) GetType() string {
 	return "FuncCall"
 }
 
-func (Variable) GetType() string {
-	return "variable"
+func (*Variable) GetType() string {
+	return "Variable"
 }

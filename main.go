@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/guilhermeg2k/dusklang/ast"
+	"github.com/guilhermeg2k/dusklang/bytecode"
 	"github.com/guilhermeg2k/dusklang/lexer"
 	"github.com/guilhermeg2k/dusklang/parser"
 )
@@ -18,11 +19,11 @@ func main() {
 	l.TokenTable = tok
 	program, err = parser.Parse(l)
 	handleError(err)
-	fmt.Println(program)
 	err = parser.Analyze(&program)
 	if err != nil {
 		handleError(err)
 	}
+	fmt.Println(bytecode.GenerateByteCode(&program))
 }
 
 func handleError(err error) {
