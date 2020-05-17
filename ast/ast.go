@@ -48,6 +48,7 @@ type FullVarDeclaration struct {
 type Assign struct {
 	Identifier string
 	Expression Expression
+	Type       string
 }
 
 type IfBlock struct {

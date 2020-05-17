@@ -8,6 +8,57 @@ import (
 	"github.com/guilhermeg2k/dusklang/vm"
 )
 
+func TestAssign(t *testing.T) {
+	f := Function{
+		Consts:          make(vm.Consts),
+		Labels:          make(vm.Labels),
+		VariablesOffset: make(VariablesOffset),
+		bytecode:        []byte{},
+	}
+	assign := ast.Assign{
+		Identifier: "x",
+		Type:       "int",
+		Expression: &ast.BinaryOperation{
+			Operator: "+",
+			Left: &ast.Literal{
+				Type:  "number",
+				Value: "5",
+			},
+			Right: &ast.Literal{
+				Type:  "number",
+				Value: "3",
+			},
+		},
+	}
+	generateAssign(&f, assign)
+	fmt.Println(f.bytecode)
+}
+func TestAutoVarDeclaration(t *testing.T) {
+	f := Function{
+		Consts:          make(vm.Consts),
+		Labels:          make(vm.Labels),
+		VariablesOffset: make(VariablesOffset),
+		bytecode:        []byte{},
+	}
+	autoVarDeclaration := ast.AutoVarDeclaration{
+		Identifier: "x",
+		Type:       "int",
+		Expression: &ast.BinaryOperation{
+			Operator: "+",
+			Left: &ast.Literal{
+				Type:  "number",
+				Value: "5",
+			},
+			Right: &ast.Literal{
+				Type:  "number",
+				Value: "3",
+			},
+		},
+	}
+	generateAutoVarDeclaration(&f, autoVarDeclaration)
+	fmt.Println(f.bytecode)
+}
+
 func TestFullVarDeclaration(t *testing.T) {
 	f := Function{
 		Consts:          make(vm.Consts),
@@ -39,7 +90,6 @@ func TestFullVarDeclaration(t *testing.T) {
 		},
 	}
 	generateFullVarDeclaration(&f, fullVarDeclaration)
-	fmt.Println(f.bytecode)
 }
 func TestExpressionGeneration(t *testing.T) {
 	function := Function{

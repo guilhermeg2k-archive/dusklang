@@ -12,7 +12,7 @@ import (
 
 func main() {
 	var program ast.Program
-	l, err := lexer.NewLexerFromFile("lexer/tokens.lex")
+	l, err := lexer.NewLexerFromFile("lexer/tokens.lexer")
 	handleError(err)
 	tok, err := l.TestTokens("examples/test.dsk")
 	handleError(err)

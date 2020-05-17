@@ -65,6 +65,13 @@ func analyzeFunctions(functions []ast.Function) error {
 				}
 				autoVarDeclaration := stament.Statement.(ast.AutoVarDeclaration)
 				autoVarDeclaration.Type = expType
+			case "Assign":
+				expType, err := getExpressionType(functions, stament.Statement.(ast.Assign).Expression, functionVars)
+				if err != nil {
+					return errors.New(formatError2(stament.Line, err.Error()))
+				}
+				assign := stament.Statement.(ast.Assign)
+				assign.Type = expType
 			case "funcCall":
 				funcCAll := stament.Statement.(ast.FuncCall)
 				if !funcExists(functions, funcCAll.Identifier) {

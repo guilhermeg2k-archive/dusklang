@@ -14,6 +14,7 @@ type VariablesOffset map[string]uint64
 type Function struct {
 	Consts          vm.Consts
 	Labels          vm.Labels
+	Variables       []ast.Variable
 	VariablesOffset VariablesOffset
 	StorageCounter  uint64
 	ConstCounter    uint64
@@ -33,47 +34,65 @@ func GenerateByteCode(program *ast.Program) ([]byte, error) {
 		switch statement.Type {
 		case "FullVarDeclaration":
 			generateFullVarDeclaration(&f, statement.Statement.(ast.FullVarDeclaration))
+		case "AutoVarDeclaration":
+			generateAutoVarDeclaration(&f, statement.Statement.(ast.AutoVarDeclaration))
 		}
 	}
 	return f.bytecode, nil
 }
 
-func generateFullVarDeclaration(function *Function, fullVarDeclaration ast.FullVarDeclaration) error {
+func generateAssign(function *Function, assign ast.Assign) {
+	generateExpression(function, assign.Expression)
+	switch assign.Type {
+	case "int":
+		storeInt(function, function.VariablesOffset[assign.Identifier])
+	case "float":
+		storeFloat(function, function.VariablesOffset[assign.Identifier])
+	case "bool":
+		storeBool(function, function.VariablesOffset[assign.Identifier])
+	}
+}
+
+func generateAutoVarDeclaration(function *Function, variable ast.AutoVarDeclaration) {
+	generateExpression(function, variable.Expression)
+	switch variable.Type {
+	case "int":
+		storeInt(function, function.ConstCounter)
+	case "float":
+		storeFloat(function, function.ConstCounter)
+	case "bool":
+		storeBool(function, function.ConstCounter)
+	}
+	function.VariablesOffset[variable.Identifier] = function.StorageCounter
+	function.StorageCounter++
+}
+
+func generateFullVarDeclaration(function *Function, fullVarDeclaration ast.FullVarDeclaration) {
 	for _, variable := range fullVarDeclaration.Variables {
 		if variable.Expression != nil {
 			generateExpression(function, variable.Expression)
 		} else {
 			switch variable.Type {
 			case "int":
-				function.Consts[function.ConstCounter] = GetInt(0)
-				function.bytecode = append(function.bytecode, vm.ILOAD_CONST)
-				function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
+				initiateInt(function)
 			case "float":
-				function.Consts[function.ConstCounter] = GetFloat(0)
-				function.bytecode = append(function.bytecode, vm.FLOAD_CONST)
-				function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
+				iniateFloat(function)
 			case "bool":
-				function.Consts[function.ConstCounter] = []byte{0}
-				function.bytecode = append(function.bytecode, vm.BOLOAD_CONST)
-				function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
+				iniateBool(function)
 			}
 			function.ConstCounter++
 		}
 		switch variable.Type {
 		case "int":
-			function.bytecode = append(function.bytecode, vm.ISTORE)
-			function.bytecode = append(function.bytecode, GetUint(function.StorageCounter)...)
+			storeInt(function, function.ConstCounter)
 		case "float":
-			function.bytecode = append(function.bytecode, vm.FSTORE)
-			function.bytecode = append(function.bytecode, GetUint(function.StorageCounter)...)
+			storeFloat(function, function.ConstCounter)
 		case "bool":
-			function.bytecode = append(function.bytecode, vm.BOSTORE)
-			function.bytecode = append(function.bytecode, GetUint(function.StorageCounter)...)
+			storeBool(function, function.ConstCounter)
 		}
 		function.VariablesOffset[variable.Identifier] = function.StorageCounter
 		function.StorageCounter++
 	}
-	return nil
 }
 
 func generateExpression(function *Function, expression ast.Expression) error {
@@ -178,6 +197,38 @@ func generateExpression(function *Function, expression ast.Expression) error {
 	return nil
 }
 
+func initiateInt(function *Function) {
+	function.Consts[function.ConstCounter] = GetInt(0)
+	function.bytecode = append(function.bytecode, vm.ILOAD_CONST)
+	function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
+}
+
+func iniateFloat(function *Function) {
+	function.Consts[function.ConstCounter] = GetFloat(0)
+	function.bytecode = append(function.bytecode, vm.FLOAD_CONST)
+	function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
+}
+
+func iniateBool(function *Function) {
+	function.Consts[function.ConstCounter] = []byte{0}
+	function.bytecode = append(function.bytecode, vm.BOLOAD_CONST)
+	function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
+}
+func storeBool(function *Function, pos uint64) {
+	function.bytecode = append(function.bytecode, vm.BOSTORE)
+	function.bytecode = append(function.bytecode, GetUint(pos)...)
+}
+
+func storeFloat(function *Function, pos uint64) {
+	function.bytecode = append(function.bytecode, vm.FSTORE)
+	function.bytecode = append(function.bytecode, GetUint(pos)...)
+}
+func storeInt(function *Function, pos uint64) {
+	function.bytecode = append(function.bytecode, vm.ISTORE)
+	function.bytecode = append(function.bytecode, GetUint(pos)...)
+}
+
+//TODO: Modularize those functions, are same of them on other packages
 func GetIntBytes(str string) ([]byte, error) {
 	i, err := strconv.ParseInt(str, 10, 64)
 	if err != nil {
