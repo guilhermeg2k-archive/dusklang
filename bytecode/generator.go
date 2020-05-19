@@ -10,7 +10,7 @@ import (
 )
 
 type VariablesOffset map[string]uint64
-
+type LabelOffset map[uint64]uint64
 type Function struct {
 	Consts          vm.Consts
 	Labels          vm.Labels
@@ -19,26 +19,89 @@ type Function struct {
 	StorageCounter  uint64
 	ConstCounter    uint64
 	LabelCounter    uint64
+	LabelOffset     LabelOffset
 	bytecode        []byte
 }
 
-func GenerateByteCode(program *ast.Program) ([]byte, error) {
+func GenerateByteCode(program *ast.Program) vm.Function {
+	main := program.Functions[0]
+	function := generateFunctionByteCode(&main)
+	f := vm.Function{
+		Labels:   function.Labels,
+		Consts:   function.Consts,
+		Bytecode: function.bytecode,
+		Storage:  &vm.Storage{},
+	}
+	return f
+}
+
+func generateFunctionByteCode(function *ast.Function) Function {
 	f := Function{
 		Consts:          make(vm.Consts),
 		Labels:          make(vm.Labels),
 		VariablesOffset: make(VariablesOffset),
+		LabelOffset:     make(LabelOffset),
 		bytecode:        []byte{},
 	}
-	function := program.Functions[0]
 	for _, statement := range function.Statements {
-		switch statement.Type {
-		case "FullVarDeclaration":
-			generateFullVarDeclaration(&f, statement.Statement.(ast.FullVarDeclaration))
-		case "AutoVarDeclaration":
-			generateAutoVarDeclaration(&f, statement.Statement.(ast.AutoVarDeclaration))
+		generateStatement(&f, statement)
+	}
+	f.bytecode = append(f.bytecode, 255)
+	return f
+}
+
+func generateStatement(function *Function, statement ast.Statement) {
+	switch statement.Type {
+	case "FullVarDeclaration":
+		generateFullVarDeclaration(function, statement.Statement.(ast.FullVarDeclaration))
+	case "AutoVarDeclaration":
+		generateAutoVarDeclaration(function, statement.Statement.(ast.AutoVarDeclaration))
+	case "IFBLOCK":
+		generateIf(function, statement.Statement.(ast.IfBlock))
+	case "For":
+		generateFor(function, statement.Statement.(ast.ForBlock))
+	}
+}
+
+func generateFor(function *Function, forBlock ast.ForBlock) {
+	generateExpression(function, forBlock.Condition)
+	function.bytecode = append(function.bytecode, vm.JUMP_IF_ELSE)
+	function.bytecode = append(function.bytecode, GetUint(function.LabelCounter)...)
+
+	forLabel := len(function.bytecode)
+	for _, statement := range forBlock.Statements {
+		generateStatement(function, statement)
+	}
+
+	generateExpression(function, forBlock.Condition)
+	function.bytecode = append(function.bytecode, vm.JUMP_IF_TRUE)
+	function.bytecode = append(function.bytecode, GetUint(uint64(forLabel))...)
+
+	function.LabelOffset[function.LabelCounter] = uint64(len(function.bytecode))
+	function.LabelCounter++
+
+	function.LabelOffset[function.LabelCounter] = uint64(forLabel)
+	function.LabelCounter++
+}
+
+func generateIf(function *Function, ifBlock ast.IfBlock) {
+	if ifBlock.Condition != nil {
+		generateExpression(function, ifBlock.Condition)
+		function.bytecode = append(function.bytecode, vm.JUMP_IF_ELSE)
+		function.bytecode = append(function.bytecode, GetUint(function.LabelCounter)...)
+		for _, statement := range ifBlock.Statements {
+			generateStatement(function, statement)
+		}
+		function.LabelOffset[function.LabelCounter] = uint64(len(function.bytecode))
+		function.LabelCounter++
+		if ifBlock.Else != nil {
+			generateIf(function, ifBlock.Else.(ast.IfBlock))
+		}
+	} else {
+		for _, statement := range ifBlock.Statements {
+			generateStatement(function, statement)
 		}
 	}
-	return f.bytecode, nil
 }
 
 func generateAssign(function *Function, assign ast.Assign) {
@@ -96,7 +159,10 @@ func generateFullVarDeclaration(function *Function, fullVarDeclaration ast.FullV
 }
 
 func generateExpression(function *Function, expression ast.Expression) error {
+	//TODO: 'AND' AND 'OR' OPERATIONS
 	switch expression.GetType() {
+	case "ParenExpression":
+		generateExpression(function, expression.(*ast.ParenExpression).Expression)
 	case "BinaryOperation":
 		if !expression.(*ast.BinaryOperation).Left.(*ast.Literal).Visited {
 			generateExpression(function, expression.(*ast.BinaryOperation).Left)
@@ -122,6 +188,8 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			switch expression.(*ast.BinaryOperation).Right.GetType() {
 			case "BinaryOperation":
 				generateExpression(function, expression.(*ast.BinaryOperation).Right.(*ast.BinaryOperation).Left)
+			case "ParenExpression":
+				generateExpression(function, expression.(*ast.BinaryOperation).Right)
 			case "Literal":
 				generateExpression(function, expression.(*ast.BinaryOperation).Right)
 			}
@@ -138,6 +206,8 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			switch expression.(*ast.BinaryOperation).Right.GetType() {
 			case "BinaryOperation":
 				generateExpression(function, expression.(*ast.BinaryOperation).Right.(*ast.BinaryOperation).Left)
+			case "ParenExpression":
+				generateExpression(function, expression.(*ast.BinaryOperation).Right)
 			case "Literal":
 				generateExpression(function, expression.(*ast.BinaryOperation).Right)
 			}
@@ -154,6 +224,8 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			switch expression.(*ast.BinaryOperation).Right.GetType() {
 			case "BinaryOperation":
 				generateExpression(function, expression.(*ast.BinaryOperation).Right.(*ast.BinaryOperation).Left)
+			case "ParenExpression":
+				generateExpression(function, expression.(*ast.BinaryOperation).Right)
 			case "Literal":
 				generateExpression(function, expression.(*ast.BinaryOperation).Right)
 			}
@@ -163,6 +235,51 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			}
 			if expression.(*ast.BinaryOperation).Right.GetType() == "BinaryOperation" {
 				generateExpression(function, expression.(*ast.BinaryOperation).Right)
+			}
+		case "==":
+			generateExpression(function, expression.(*ast.BinaryOperation).Left)
+			generateExpression(function, expression.(*ast.BinaryOperation).Right)
+			switch expression.(*ast.BinaryOperation).Left.(*ast.Literal).Type {
+			case "number":
+				function.bytecode = append(function.bytecode, vm.ICMP_EQUALS)
+			case "decimalNumber":
+				function.bytecode = append(function.bytecode, vm.FCMP_EQUALS)
+			}
+		case "<=":
+			generateExpression(function, expression.(*ast.BinaryOperation).Left)
+			generateExpression(function, expression.(*ast.BinaryOperation).Right)
+			switch expression.(*ast.BinaryOperation).Left.(*ast.Literal).Type {
+			case "number":
+				function.bytecode = append(function.bytecode, vm.ICMP_LESS_EQUALS)
+			case "decimalNumber":
+				function.bytecode = append(function.bytecode, vm.FCMP_LESS_EQUALS)
+			}
+		case ">=":
+			generateExpression(function, expression.(*ast.BinaryOperation).Left)
+			generateExpression(function, expression.(*ast.BinaryOperation).Right)
+			switch expression.(*ast.BinaryOperation).Left.(*ast.Literal).Type {
+			case "number":
+				function.bytecode = append(function.bytecode, vm.ICMP_GREATER_EQUALS)
+			case "decimalNumber":
+				function.bytecode = append(function.bytecode, vm.FCMP_GREATER_EQUALS)
+			}
+		case "<":
+			generateExpression(function, expression.(*ast.BinaryOperation).Left)
+			generateExpression(function, expression.(*ast.BinaryOperation).Right)
+			switch expression.(*ast.BinaryOperation).Left.(*ast.Literal).Type {
+			case "number":
+				function.bytecode = append(function.bytecode, vm.ICMP_LESS_THEN)
+			case "decimalNumber":
+				function.bytecode = append(function.bytecode, vm.FCMP_LESS_THEN)
+			}
+		case ">":
+			generateExpression(function, expression.(*ast.BinaryOperation).Left)
+			generateExpression(function, expression.(*ast.BinaryOperation).Right)
+			switch expression.(*ast.BinaryOperation).Left.(*ast.Literal).Type {
+			case "number":
+				function.bytecode = append(function.bytecode, vm.ICMP_GREATER_THEN)
+			case "decimalNumber":
+				function.bytecode = append(function.bytecode, vm.FCMP_GREATER_THEN)
 			}
 		}
 	case "Literal":
@@ -192,6 +309,18 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			function.bytecode = append(function.bytecode, vm.BOLOAD_CONST)
 			function.bytecode = append(function.bytecode, GetUint(function.ConstCounter)...)
 			function.ConstCounter++
+		}
+	case "Variable":
+		switch expression.(*ast.Variable).Type {
+		case "int":
+			function.bytecode = append(function.bytecode, vm.ILOAD)
+			function.bytecode = append(function.bytecode, GetUint(function.VariablesOffset[expression.(*ast.Variable).Identifier])...)
+		case "float":
+			function.bytecode = append(function.bytecode, vm.FLOAD)
+			function.bytecode = append(function.bytecode, GetUint(function.VariablesOffset[expression.(*ast.Variable).Identifier])...)
+		case "boolean":
+			function.bytecode = append(function.bytecode, vm.BOLOAD)
+			function.bytecode = append(function.bytecode, GetUint(function.VariablesOffset[expression.(*ast.Variable).Identifier])...)
 		}
 	}
 	return nil

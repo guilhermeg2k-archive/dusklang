@@ -8,6 +8,7 @@ import (
 	"github.com/guilhermeg2k/dusklang/bytecode"
 	"github.com/guilhermeg2k/dusklang/lexer"
 	"github.com/guilhermeg2k/dusklang/parser"
+	"github.com/guilhermeg2k/dusklang/vm"
 )
 
 func main() {
@@ -23,7 +24,11 @@ func main() {
 	if err != nil {
 		handleError(err)
 	}
-	fmt.Println(bytecode.GenerateByteCode(&program))
+	main := bytecode.GenerateByteCode(&program)
+	VM := vm.VirtualMachine{
+		Stack: &vm.Stack{},
+	}
+	vm.Evaluate(&VM, &main)
 }
 
 func handleError(err error) {

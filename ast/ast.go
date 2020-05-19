@@ -1,5 +1,6 @@
 package ast
 
+//TODO: Remove Type and make a interface
 type Statement struct {
 	Type      string
 	Statement interface{}
@@ -133,6 +134,10 @@ func (*ParenExpression) GetType() string {
 }
 
 func (*Literal) GetType() string {
+	return "Literal"
+}
+
+func (*Variable) Variable() string {
 	return "Literal"
 }
 

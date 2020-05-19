@@ -8,6 +8,7 @@ import (
 	"github.com/guilhermeg2k/dusklang/vm"
 )
 
+//TODO: Make real tests and not print stuff
 func TestAssign(t *testing.T) {
 	f := Function{
 		Consts:          make(vm.Consts),

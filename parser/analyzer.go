@@ -61,6 +61,7 @@ func analyzeFunctions(functions []ast.Function) error {
 			case "AutoVarDeclaration":
 				expType, err := getExpressionType(functions, stament.Statement.(ast.AutoVarDeclaration).Expression, functionVars)
 				if err != nil {
+
 					return errors.New(formatError2(stament.Line, err.Error()))
 				}
 				autoVarDeclaration := stament.Statement.(ast.AutoVarDeclaration)
@@ -106,12 +107,18 @@ func analyzeFunctions(functions []ast.Function) error {
 }
 
 func analyzeIfBlock(functions []ast.Function, ifBlock ast.IfBlock, functionVars []ast.Variable) error {
+	if ifBlock.Condition == nil {
+		return nil
+	}
 	expType, err := getExpressionType(functions, ifBlock.Condition, functionVars)
 	if err != nil {
 		return err
 	}
 	if !(expType == "bool") {
-		return errors.New(fmt.Sprintf("Invalid condition return type, line %d", ifBlock.Line))
+		return errors.New("Invalid condition return type")
+	}
+	if ifBlock.Else != nil {
+		fmt.Println(ifBlock.Else)
 	}
 	if ifBlock.Else != nil {
 		err = analyzeIfBlock(functions, ifBlock.Else.(ast.IfBlock), functionVars)
@@ -147,7 +154,11 @@ func getExpressionType(functions []ast.Function, expression ast.Expression, func
 		if err != nil {
 			return "", err
 		}
+		fmt.Println(typeOfLeft)
 		if typeOfLeft == typeOfRight {
+			if isComparison(expression.(*ast.BinaryOperation).Operator) {
+				return "bool", nil
+			}
 			return typeOfLeft, nil
 		}
 		return "", errors.New("Invalid type operation")
@@ -163,7 +174,7 @@ func getExpressionType(functions []ast.Function, expression ast.Expression, func
 			return "", err
 		}
 		return funcReturnType, nil
-	case "variable":
+	case "Variable":
 		varType, err := getVariableType(functionVars, expression.(*ast.Variable).Identifier)
 		if err != nil {
 			return "", err

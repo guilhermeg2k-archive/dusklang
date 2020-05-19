@@ -1,4 +1,4 @@
-//TODO: Get rid of this fike
+//TODO: Get rid of this file
 # byte int float bool
 # package import from
 # function var return
@@ -6,11 +6,11 @@
 -- #switch case default
 # for break continue
 -- # try catch finally
-# >= <= != == >= <=
+# >= <= != ==
 # \+\+ \-\- >> << ! and or
 # > < \+ \- \* \/ , \( \) \[ \] : = ;
 # true false
-% decimalNumber [0-9]+.[0-9]+
+% decimalNumber [0-9]+\.[0-9]+
 % number [0-9]+
 % string ".*"
 % identifier [a-zA-Z_][_a-zA-Z0-9]*

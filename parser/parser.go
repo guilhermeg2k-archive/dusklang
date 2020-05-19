@@ -43,7 +43,11 @@ func Parse(l lexer.Lexer) (ast.Program, error) {
 func parseFunctions(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Function, error) {
 	var functions []ast.Function
 	var function ast.Function
+	*nextToken = lexer.Token{}
 	for {
+		if nextToken.Name == "EOF" {
+			return functions, nil
+		}
 		*nextToken = l.Next()
 		if nextToken.Name == "EOF" {
 			return functions, nil
@@ -119,6 +123,7 @@ func parseFunctionArgs(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Variable, 
 	}
 }
 
+//TODO: Name Pattern equals to the ast
 func parseStatements(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Statement, error) {
 	var statements []ast.Statement
 	*nextToken = l.Next()
@@ -215,6 +220,7 @@ func parseStatements(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Statement, e
 						Statement: forBlock,
 						Line:      forLine,
 					}
+
 					statements = append(statements, statement)
 
 				case "return":
@@ -443,7 +449,6 @@ func parseExpression(l *lexer.Lexer, nextToken *lexer.Token) (ast.Expression, er
 			*nextToken = l.Back()
 			var variable ast.Variable
 			variable.Identifier = nextToken.Value
-			fmt.Println(variable.Type)
 			left := variable
 			binaryOp, err := parseBinaryOperation(&left, l, nextToken)
 			if err != nil {
@@ -596,6 +601,11 @@ func parsePackage(l *lexer.Lexer) (lexer.Token, error) {
 
 func isType(s string) bool {
 	var types string = "byte int float string bool"
+	return strings.Contains(types, s)
+}
+
+func isComparison(s string) bool {
+	var types string = "> < >= <= != =="
 	return strings.Contains(types, s)
 }
 

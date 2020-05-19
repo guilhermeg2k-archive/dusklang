@@ -2,5 +2,6 @@ package main
 
 import cos, sin from Math
 
-function main(int z):
-    var int x = 32
+function main():
+    var int x = 2
+    var int y = x+1
