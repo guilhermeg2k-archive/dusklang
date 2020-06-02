@@ -128,7 +128,7 @@ func TestExpressionGeneration(t *testing.T) {
 		Stack: &vm.Stack{},
 	}
 	main := vm.Function{
-		Storage: &vm.Storage{},
+		Storage: vm.Storage{},
 	}
 	main.Consts = function.Consts
 	main.Bytecode = function.bytecode

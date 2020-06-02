@@ -23,10 +23,12 @@ type Import struct {
 	Line        uint
 }
 
+type Variables map[string]Variable
 type Function struct {
 	Identifier string
 	ReturnType string
 	Args       []Variable
+	Variables  Variables
 	Statements []Statement
 	Line       uint
 }
@@ -34,6 +36,7 @@ type Function struct {
 type Variable struct {
 	Type       string
 	Identifier string
+	Visited    bool
 }
 
 type AutoVarDeclaration struct {
@@ -134,10 +137,6 @@ func (*ParenExpression) GetType() string {
 }
 
 func (*Literal) GetType() string {
-	return "Literal"
-}
-
-func (*Variable) Variable() string {
 	return "Literal"
 }
 

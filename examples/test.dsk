@@ -3,5 +3,6 @@ package main
 import cos, sin from Math
 
 function main():
-    var int x = 2
-    var int y = x+1
+    var int x = 30
+    var int y = 10
+    var int z = x+y

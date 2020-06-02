@@ -43,6 +43,7 @@ func Parse(l lexer.Lexer) (ast.Program, error) {
 func parseFunctions(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Function, error) {
 	var functions []ast.Function
 	var function ast.Function
+	function.Variables = make(ast.Variables)
 	*nextToken = lexer.Token{}
 	for {
 		if nextToken.Name == "EOF" {

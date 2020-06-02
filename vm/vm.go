@@ -1,6 +1,9 @@
 package vm
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 type Storage map[uint64][]byte
 type Consts map[uint64][]byte
@@ -15,7 +18,7 @@ type VirtualMachine struct {
 type Function struct {
 	Labels        Labels
 	Consts        Consts
-	Storage       *Storage
+	Storage       Storage
 	Bytecode      []byte
 	CurrentOffset int
 }
@@ -48,10 +51,13 @@ func pop(stack *Stack, bytes int) []byte {
 	return poped
 }
 
-func store(storage *Storage, offset uint64, bytes []byte) {
-	(*storage)[offset] = bytes
+func store(storage Storage, offset uint64, bytes []byte) {
+	var b []byte
+	b = append(b, bytes...)
+	storage[offset] = b
 }
 
-func load(storage *Storage, offset uint64) []byte {
-	return (*storage)[offset]
+func load(storage Storage, offset uint64) []byte {
+	fmt.Println(offset, storage[offset], storage[offset])
+	return storage[offset]
 }

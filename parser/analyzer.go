@@ -44,6 +44,10 @@ func analyzeFunctions(functions []ast.Function) error {
 								Identifier: variable.Identifier,
 								Type:       variable.Type,
 							})
+						f.Variables[variable.Identifier] = ast.Variable{
+							Identifier: variable.Identifier,
+							Type:       variable.Type,
+						}
 						if variable.Expression != nil {
 							expType, err := getExpressionType(functions, variable.Expression, functionVars)
 							if err != nil {
@@ -118,9 +122,6 @@ func analyzeIfBlock(functions []ast.Function, ifBlock ast.IfBlock, functionVars 
 		return errors.New("Invalid condition return type")
 	}
 	if ifBlock.Else != nil {
-		fmt.Println(ifBlock.Else)
-	}
-	if ifBlock.Else != nil {
 		err = analyzeIfBlock(functions, ifBlock.Else.(ast.IfBlock), functionVars)
 		if err != nil {
 			return err
@@ -154,7 +155,6 @@ func getExpressionType(functions []ast.Function, expression ast.Expression, func
 		if err != nil {
 			return "", err
 		}
-		fmt.Println(typeOfLeft)
 		if typeOfLeft == typeOfRight {
 			if isComparison(expression.(*ast.BinaryOperation).Operator) {
 				return "bool", nil

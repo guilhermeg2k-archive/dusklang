@@ -10,7 +10,7 @@ func TestJumpElse(t *testing.T) {
 		Stack: &Stack{},
 	}
 	function := Function{
-		Storage: &Storage{},
+		Storage: Storage{},
 	}
 	consts := make(Consts)
 	consts[0] = []byte{0}
@@ -56,7 +56,7 @@ func TestJumpTrue(t *testing.T) {
 		Stack: &Stack{},
 	}
 	function := Function{
-		Storage: &Storage{},
+		Storage: Storage{},
 	}
 	consts := make(Consts)
 	consts[0] = []byte{0}

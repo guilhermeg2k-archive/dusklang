@@ -124,7 +124,7 @@ func TestFloatComparison(t *testing.T) {
 			Stack: &Stack{},
 		}
 		function := Function{
-			Storage: &Storage{},
+			Storage: Storage{},
 		}
 		consts := make(Consts)
 		consts[0] = GetFloat(fc.a)
@@ -248,7 +248,7 @@ func TestIntComparison(t *testing.T) {
 			Stack: &Stack{},
 		}
 		function := Function{
-			Storage: &Storage{},
+			Storage: Storage{},
 		}
 		consts := make(Consts)
 		consts[0] = GetInt(ic.a)
