@@ -117,6 +117,8 @@ type UnaryOperation struct {
 
 type ParenExpression struct {
 	Expression Expression
+	Type       string
+	Visited    bool
 }
 
 type Literal struct {

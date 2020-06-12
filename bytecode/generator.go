@@ -3,6 +3,7 @@ package bytecode
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 
 	"github.com/guilhermeg2k/dusklang/ast"
@@ -52,6 +53,7 @@ func generateFunctionByteCode(function *ast.Function) Function {
 	f.bytecode = append(f.bytecode, GetUint(2)...)
 	f.bytecode = append(f.bytecode, 99)
 	f.bytecode = append(f.bytecode, 255)
+	fmt.Println(f.bytecode)
 	return f
 }
 
@@ -65,9 +67,10 @@ func generateStatement(function *Function, statement ast.Statement) {
 		generateIf(function, statement.Statement.(ast.IfBlock))
 	case "For":
 		generateFor(function, statement.Statement.(ast.ForBlock))
+	case "Assign":
+		generateAssign(function, statement.Statement.(ast.Assign))
 	}
 }
-
 func generateFor(function *Function, forBlock ast.ForBlock) {
 	generateExpression(function, forBlock.Condition)
 	function.bytecode = append(function.bytecode, vm.JUMP_IF_ELSE)
@@ -166,8 +169,6 @@ func generateFullVarDeclaration(function *Function, fullVarDeclaration ast.FullV
 func generateExpression(function *Function, expression ast.Expression) error {
 	//TODO: 'AND' AND 'OR' OPERATIONS
 	switch expression.GetType() {
-	case "ParenExpression":
-		generateExpression(function, expression.(*ast.ParenExpression).Expression)
 	case "BinaryOperation":
 		switch expression.(*ast.BinaryOperation).Left.GetType() {
 		case "Variable":
@@ -176,6 +177,10 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			}
 		case "Literal":
 			if !expression.(*ast.BinaryOperation).Left.(*ast.Literal).Visited {
+				generateExpression(function, expression.(*ast.BinaryOperation).Left)
+			}
+		case "ParenExpression":
+			if !expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Visited {
 				generateExpression(function, expression.(*ast.BinaryOperation).Left)
 			}
 		}
@@ -197,6 +202,13 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				case "float":
 					function.bytecode = append(function.bytecode, vm.FADD)
 				}
+			case "ParenExpression":
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.IADD)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FADD)
+				}
 			}
 		case "-":
 			generateExpression(function, expression.(*ast.BinaryOperation).Right)
@@ -210,6 +222,13 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				}
 			case "Variable":
 				switch function.Variables[expression.(*ast.BinaryOperation).Left.(*ast.Variable).Identifier].Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.ISUB)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FSUB)
+				}
+			case "ParenExpression":
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
 				case "int":
 					function.bytecode = append(function.bytecode, vm.ISUB)
 				case "float":
@@ -242,6 +261,13 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				case "decimalNumber":
 					function.bytecode = append(function.bytecode, vm.FMULT)
 				}
+			case "ParenExpression":
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.IMULT)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.IMULT)
+				}
 			}
 			if expression.(*ast.BinaryOperation).Right.GetType() == "BinaryOperation" {
 				generateExpression(function, expression.(*ast.BinaryOperation).Right)
@@ -272,6 +298,13 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				case "float":
 					function.bytecode = append(function.bytecode, vm.FDIV)
 				}
+			case "ParenExpression":
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.IDIV)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.IDIV)
+				}
 			}
 			if expression.(*ast.BinaryOperation).Right.GetType() == "BinaryOperation" {
 				generateExpression(function, expression.(*ast.BinaryOperation).Right)
@@ -294,6 +327,11 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				}
 			case "Variable":
 				switch function.Variables[expression.(*ast.BinaryOperation).Left.(*ast.Variable).Identifier].Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.IMOD)
+				}
+			case "ParenExpression":
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
 				case "int":
 					function.bytecode = append(function.bytecode, vm.IMOD)
 				}
@@ -320,6 +358,14 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				case "float":
 					function.bytecode = append(function.bytecode, vm.FCMP_EQUALS)
 				}
+			case "ParenExpression":
+				fmt.Println(expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type)
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.ICMP_EQUALS)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FCMP_EQUALS)
+				}
 			}
 		case "<=":
 			generateExpression(function, expression.(*ast.BinaryOperation).Left)
@@ -334,6 +380,14 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				}
 			case "Variable":
 				switch function.Variables[expression.(*ast.BinaryOperation).Left.(*ast.Variable).Identifier].Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.ICMP_LESS_EQUALS)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FCMP_LESS_EQUALS)
+				}
+			case "ParenExpression":
+				fmt.Println(expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type)
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
 				case "int":
 					function.bytecode = append(function.bytecode, vm.ICMP_LESS_EQUALS)
 				case "float":
@@ -359,6 +413,14 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				case "float":
 					function.bytecode = append(function.bytecode, vm.FCMP_GREATER_EQUALS)
 				}
+			case "ParenExpression":
+				fmt.Println(expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type)
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.ICMP_GREATER_EQUALS)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FCMP_GREATER_EQUALS)
+				}
 			}
 
 		case "<":
@@ -379,6 +441,14 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				case "float":
 					function.bytecode = append(function.bytecode, vm.FCMP_LESS_THEN)
 				}
+			case "ParenExpression":
+				fmt.Println(expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type)
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.ICMP_LESS_THEN)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FCMP_LESS_THEN)
+				}
 			}
 
 		case ">":
@@ -394,6 +464,14 @@ func generateExpression(function *Function, expression ast.Expression) error {
 				}
 			case "Variable":
 				switch function.Variables[expression.(*ast.BinaryOperation).Left.(*ast.Variable).Identifier].Type {
+				case "int":
+					function.bytecode = append(function.bytecode, vm.ICMP_GREATER_THEN)
+				case "float":
+					function.bytecode = append(function.bytecode, vm.FCMP_GREATER_THEN)
+				}
+			case "ParenExpression":
+				fmt.Println(expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type)
+				switch expression.(*ast.BinaryOperation).Left.(*ast.ParenExpression).Type {
 				case "int":
 					function.bytecode = append(function.bytecode, vm.ICMP_GREATER_THEN)
 				case "float":
@@ -442,6 +520,9 @@ func generateExpression(function *Function, expression ast.Expression) error {
 			function.bytecode = append(function.bytecode, vm.BOLOAD)
 			function.bytecode = append(function.bytecode, GetUint(function.VariablesOffset[expression.(*ast.Variable).Identifier])...)
 		}
+	case "ParenExpression":
+		expression.(*ast.ParenExpression).Visited = true
+		generateExpression(function, expression.(*ast.ParenExpression).Expression)
 	}
 	return nil
 }

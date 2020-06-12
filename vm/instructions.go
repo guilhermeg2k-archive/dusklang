@@ -2,7 +2,6 @@ package vm
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	"github.com/guilhermeg2k/dusklang/dusk"
 )
@@ -24,7 +23,6 @@ func iStore(stack *Stack, function *Function) {
 	offsetValue, _ := binary.Uvarint(offset)
 	bytes := pop(stack, 8)
 	store(function.Storage, offsetValue, bytes)
-	fmt.Println(function.Storage)
 }
 
 func iLoad(stack *Stack, function *Function) {

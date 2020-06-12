@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -58,6 +57,5 @@ func store(storage Storage, offset uint64, bytes []byte) {
 }
 
 func load(storage Storage, offset uint64) []byte {
-	fmt.Println(offset, storage[offset], storage[offset])
 	return storage[offset]
 }

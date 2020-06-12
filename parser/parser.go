@@ -155,7 +155,7 @@ func parseStatements(l *lexer.Lexer, nextToken *lexer.Token) ([]ast.Statement, e
 						}
 						statement := ast.Statement{
 							Statement: assign,
-							Type:      "assign",
+							Type:      "Assign",
 						}
 						statement.Line = nextToken.Line
 						statements = append(statements, statement)

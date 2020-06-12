@@ -70,6 +70,11 @@ func analyzeFunctions(functions []ast.Function) error {
 				}
 				autoVarDeclaration := stament.Statement.(ast.AutoVarDeclaration)
 				autoVarDeclaration.Type = expType
+				functionVars = append(functionVars,
+					ast.Variable{
+						Identifier: stament.Statement.(ast.AutoVarDeclaration).Identifier,
+						Type:       expType,
+					})
 			case "Assign":
 				expType, err := getExpressionType(functions, stament.Statement.(ast.Assign).Expression, functionVars)
 				if err != nil {
@@ -164,6 +169,7 @@ func getExpressionType(functions []ast.Function, expression ast.Expression, func
 		return "", errors.New("Invalid type operation")
 	case "ParenExpression":
 		parenType, err := getExpressionType(functions, expression.(*ast.ParenExpression).Expression, functionVars)
+		expression.(*ast.ParenExpression).Type = parenType
 		if err != nil {
 			return "", err
 		}
